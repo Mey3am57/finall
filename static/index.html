@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>سامانه جامع دانشگاه</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+        
+        /* مودال لاگین */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .role-card { background: white; padding: 40px; border-radius: 12px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .role-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-student { background: #3498db; color: white; } .btn-student:hover { background: #2980b9; }
+        .btn-admin { background: #2c3e50; color: white; } .btn-admin:hover { background: #34495e; }
+        
+        .main-container { display: none; max-width: 1400px; margin: auto; gap: 20px; grid-template-columns: 320px 1fr; }
+        .sidebar { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; }
+        .content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow-x: auto; }
+        
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { cursor: pointer; font-weight: bold; }
+        
+        .view-switcher { background: #fff3e0; padding: 10px; border-radius: 5px; border: 1px solid #ffe0b2; text-align: center; }
+        .switch-btn { background: #ff9800; color: white; border: none; } .switch-btn:hover { background: #f57c00; }
+        .re-login-btn { background: transparent; border: 1px solid #ccc; color: #555; font-size: 11px; margin-top: 5px; padding: 5px; width: auto; cursor: pointer; }
+        
+        #bookingFormContainer { transition: 0.3s; }
+        .disabled-form { opacity: 0.5; pointer-events: none; }
+
+        .admin-config { display: none; border-top: 2px dashed #ddd; padding-top: 15px; }
+        .config-block { background: #fafafa; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #eee; }
+        .config-block h4 { margin: 0 0 5px 0; font-size: 13px; color: #555; }
+        .mini-list { list-style: none; padding: 0; max-height: 80px; overflow-y: auto; margin-top: 5px; }
+        .mini-list li { display: flex; justify-content: space-between; font-size: 11px; padding: 3px; border-bottom: 1px solid #eee; }
+        .del-x { color: red; cursor: pointer; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: center; vertical-align: top; }
+        th { background: #f8f9fa; color: #555; }
+        .booked-cell { background: #e0f2f1; padding: 5px; margin-bottom: 4px; border-radius: 4px; position: relative; text-align: right; border-right: 3px solid #009688; }
+        .delete-booking { position: absolute; top: 2px; left: 2px; background: #ef5350; color: white; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; font-size: 10px; cursor: pointer; display: none; }
+        
+        .login-box { display: none; margin-top: 10px; }
+        .login-box input { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="roleModal" class="modal-overlay">
+    <div class="role-card">
+        <h2>سیستم مدیریت دانشگاه</h2>
+        <button class="role-btn btn-student" onclick="startApp('student')">ورود دانشجو</button>
+        <button class="role-btn btn-admin" onclick="showLogin()">ورود مدیر / آموزش</button>
+        <div id="loginForm" class="login-box">
+            <input type="text" id="admUser" placeholder="نام کاربری">
+            <input type="password" id="admPass" placeholder="رمز عبور">
+            <button onclick="doLogin()" style="background: #27ae60; color: white;">ورود</button>
+            <p id="loginError" style="color:red; font-size:12px; display:none;"></p>
+        </div>
+    </div>
+</div>
+
+<div id="appContainer" class="main-container">
+    <div class="sidebar">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+             <div id="viewSwitcherBox" class="view-switcher" style="flex:1;">
+                <label style="font-size:12px; display:block; margin-bottom:5px;">در حال مشاهده:</label>
+                <button id="switchBtn" class="switch-btn" onclick="toggleViewMode()">داده‌های رسمی (آموزش)</button>
+            </div>
+        </div>
+        <button id="reLoginBtn" class="re-login-btn" onclick="openLoginModal()">🔐 ورود مدیر</button>
+
+        <div id="bookingFormContainer">
+            <h3 id="formTitle" style="margin:10px 0 0 0; font-size:16px;">ثبت رزرو</h3>
+            <p id="readOnlyMsg" style="display:none; color:red; font-size:12px; margin:5px 0;">(غیرقابل ویرایش)</p>
+            <input type="text" id="userName" placeholder="نام">
+            <input type="text" id="userInfo" placeholder="شماره دانشجویی / کد درس">
+            <select id="resSelect"></select>
+            <select id="daySelect"></select>
+            <select id="hourSelect"></select>
+            <button id="submitBtn" onclick="submitBooking()" style="background:#4CAF50; color:white;">✅ ثبت</button>
+        </div>
+
+        <div id="adminConfig" class="admin-config">
+            <h3 style="font-size:14px; color:#c0392b;">🛠 تنظیمات سیستم</h3>
+            <div class="config-block" style="border:1px solid #3498db; background:#eaf2f8;">
+                <h4 style="color:#2980b9;">👥 مدیریت مدیران</h4>
+                <div style="display:flex; gap:2px; flex-direction:column;">
+                    <input id="newAdmUser" placeholder="یوزر" style="font-size:11px;">
+                    <input id="newAdmPass" placeholder="پسورد" style="font-size:11px;">
+                    <button onclick="addAdmin()" style="background:#2980b9; color:white; font-size:11px;">افزودن</button>
+                </div>
+                <ul id="listAdmin" class="mini-list"></ul>
+            </div>
+            <div class="config-block">
+                <h4>اتاق‌ها</h4>
+                <div style="display:flex; gap:2px;"><input id="newRes" placeholder="نام"><button onclick="addRes()" style="width:auto;">+</button></div>
+                <ul id="listRes" class="mini-list"></ul>
+            </div>
+            <div class="config-block">
+                <h4>روزها</h4>
+                <div style="display:flex; gap:2px;"><input id="newDay" placeholder="روز"><button onclick="addDay()" style="width:auto;">+</button></div>
+                <ul id="listDay" class="mini-list"></ul>
+            </div>
+            <div class="config-block">
+                <h4>ساعت‌ها</h4>
+                <div style="display:flex; gap:2px;"><input id="newHourVal" type="number" placeholder="#" style="width:30px;"><input id="newHourLbl" placeholder="متن"><button onclick="addHour()" style="width:auto;">+</button></div>
+                <ul id="listHour" class="mini-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="gridHeader" style="margin:0; font-size:18px;">برنامه هفتگی</h2>
+            <button onclick="downloadExcel()" style="width:auto; background:#008CBA; color:white; font-size:12px;">📥 اکسل</button>
+        </div>
+        <table id="scheduleTable"><thead></thead><tbody></tbody></table>
+    </div>
+</div>
+
+<script>
+    const API = "http://127.0.0.1:8000/api";
+    let IS_ADMIN = false;
+    let CURRENT_VIEW_MODE = 'student';
+
+    function openLoginModal() {
+        document.getElementById('appContainer').style.display = 'none';
+        document.getElementById('roleModal').style.display = 'flex';
+        showLogin();
+    }
+    function showLogin() { 
+        document.getElementById('loginForm').style.display = 'block'; 
+        document.getElementById('loginError').style.display = 'none';
+    }
+    async function doLogin() {
+        const u = document.getElementById('admUser').value;
+        const p = document.getElementById('admPass').value;
+        if(!u || !p) return;
+        const res = await fetch(`${API}/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username:u, password:p}) });
+        if(res.ok) { IS_ADMIN = true; startApp('official'); } 
+        else { const err = await res.json(); const errEl = document.getElementById('loginError'); errEl.innerText = err.detail; errEl.style.display = 'block'; }
+    }
+    function startApp(mode) {
+        document.getElementById('roleModal').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'grid';
+        CURRENT_VIEW_MODE = mode; updateUI(); loadAllData();
+    }
+    function toggleViewMode() {
+        CURRENT_VIEW_MODE = (CURRENT_VIEW_MODE === 'official') ? 'student' : 'official';
+        updateUI(); loadGrid();
+    }
+    function updateUI() {
+        const btn = document.getElementById('switchBtn');
+        const title = document.getElementById('formTitle');
+        const header = document.getElementById('gridHeader');
+        const inputs = [document.getElementById('userName'), document.getElementById('userInfo')];
+        const formContainer = document.getElementById('bookingFormContainer');
+        const readOnlyMsg = document.getElementById('readOnlyMsg');
+        const submitBtn = document.getElementById('submitBtn');
+        const reLoginBtn = document.getElementById('reLoginBtn');
+
+        if (IS_ADMIN) {
+            document.getElementById('adminConfig').style.display = 'block';
+            reLoginBtn.style.display = 'none';
+            loadAdmins();
+        } else {
+            document.getElementById('adminConfig').style.display = 'none';
+            reLoginBtn.style.display = 'block';
+        }
+
+        if (CURRENT_VIEW_MODE === 'official') {
+            btn.innerText = "🔄 مشاهده رزروهای دانشجو";
+            btn.style.background = "#e67e22";
+            title.innerText = "چیدمان کلاس (رسمی)";
+            header.innerText = "📅 کلاس‌های رسمی دانشگاه";
+            inputs[0].placeholder = "نام استاد / درس";
+            inputs[1].placeholder = "کد درس";
+            document.body.style.background = "#fff3e0"; 
+            const canEdit = IS_ADMIN; 
+            if(!canEdit){ formContainer.classList.add('disabled-form'); readOnlyMsg.style.display='block'; submitBtn.style.display='none'; }
+            else { formContainer.classList.remove('disabled-form'); readOnlyMsg.style.display='none'; submitBtn.style.display='block'; }
+        } else {
+            btn.innerText = "🔄 مشاهده کلاس‌های رسمی";
+            btn.style.background = "#3498db";
+            title.innerText = "رزرو اتاق (دانشجو)";
+            header.innerText = "📅 رزروهای دانشجویی";
+            inputs[0].placeholder = "نام دانشجو";
+            inputs[1].placeholder = "شماره دانشجویی";
+            document.body.style.background = "#e3f2fd"; 
+            formContainer.classList.remove('disabled-form'); readOnlyMsg.style.display='none'; submitBtn.style.display='block';
+        }
+    }
+    async function loadAllData() { await Promise.all([loadRes(), loadDay(), loadHour()]); await loadGrid(); }
+    async function loadRes() {
+        const d = await (await fetch(`${API}/resources`)).json();
+        const s = document.getElementById('resSelect'); s.innerHTML='';
+        const l = document.getElementById('listRes'); l.innerHTML='';
+        d.forEach(i => { s.add(new Option(i.name, i.name)); if(IS_ADMIN) l.innerHTML += `<li>${i.name} <span class="del-x" onclick="delItem('resources','${i.name}')">✕</span></li>`; });
+    }
+    async function loadDay() {
+        const d = await (await fetch(`${API}/days`)).json();
+        const s = document.getElementById('daySelect'); s.innerHTML='';
+        const l = document.getElementById('listDay'); l.innerHTML='';
+        d.forEach(i => { s.add(new Option(i.name, i.name)); if(IS_ADMIN) l.innerHTML += `<li>${i.name} <span class="del-x" onclick="delItem('days','${i.name}')">✕</span></li>`; });
+    }
+    async function loadHour() {
+        const d = await (await fetch(`${API}/hours`)).json();
+        const s = document.getElementById('hourSelect'); s.innerHTML='';
+        const l = document.getElementById('listHour'); l.innerHTML='';
+        d.forEach(i => { s.add(new Option(i.label, i.value)); if(IS_ADMIN) l.innerHTML += `<li>${i.label} <span class="del-x" onclick="delItem('hours',${i.value})">✕</span></li>`; });
+    }
+    async function loadAdmins() {
+        const d = await (await fetch(`${API}/admins`)).json();
+        const l = document.getElementById('listAdmin'); l.innerHTML='';
+        d.forEach(u => { let del = (u.username==='admin')?'':`<span class="del-x" onclick="delAdmin('${u.username}')">✕</span>`; l.innerHTML+=`<li>👤 ${u.username} ${del}</li>`; });
+    }
+    async function addAdmin() { const u=val('newAdmUser'); const p=val('newAdmPass'); if(!u||!p)return; const r=await fetch(`${API}/admins`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})}); if(r.ok){loadAdmins();val('newAdmUser','');val('newAdmPass','');} else alert((await r.json()).detail); }
+    async function delAdmin(u) { if(confirm('حذف شود؟')) { await fetch(`${API}/admins/${u}`, {method:'DELETE'}); loadAdmins(); } }
+    
+    // ** منطق گرید اصلاح شده (نمایش لیستی) **
+    async function loadGrid() {
+        const d = await (await fetch(`${API}/schedule-grid?type_filter=${CURRENT_VIEW_MODE}`)).json();
+        const th = document.querySelector('#scheduleTable thead');
+        const tb = document.querySelector('#scheduleTable tbody');
+        let h = '<tr>'; d.columns.forEach(c => h+=`<th>${c}</th>`); th.innerHTML = h+'</tr>';
+        
+        let b = '';
+        d.rows.forEach(r => {
+            b += '<tr>';
+            b += `<td><strong>${r.hour_label}</strong></td>`;
+            for(let i=1; i<d.columns.length; i++){
+                const day = d.columns[i];
+                const items = r[day]; // این الان یک لیست است
+                b += '<td>';
+                if(items.length === 0) b+='<span style="color:#ccc;">---</span>';
+                else {
+                    items.forEach(c => {
+                        const del = IS_ADMIN ? `<span class="delete-booking" onclick="delBook(${c.id})" style="display:block;">✕</span>` : '';
+                        b+=`<div class="booked-cell">${del}<strong>${c.user}</strong><br><small style="font-size:10px;">${c.res} | ${c.info}</small></div>`;
+                    });
+                }
+                b += '</td>';
+            }
+            b+='</tr>';
+        });
+        tb.innerHTML = b;
+    }
+
+    async function addRes() { const v=val('newRes'); if(!v)return; await post('resources', {name:v}); loadRes(); val('newRes',''); }
+    async function addDay() { const v=val('newDay'); if(!v)return; await post('days', {name:v}); loadDay(); val('newDay',''); }
+    async function addHour() { const v=val('newHourVal'); const l=val('newHourLbl'); if(!v||!l)return; await post('hours', {value:parseInt(v), label:l}); loadHour(); val('newHourVal',''); val('newHourLbl',''); }
+    async function delItem(t,id) { if(confirm('حذف شود؟')) { await fetch(`${API}/${t}/${id}`,{method:'DELETE'}); if(t=='resources')loadRes();else if(t=='days')loadDay();else loadHour(); } }
+    async function delBook(id) { if(confirm('رزرو حذف شود؟')) { await fetch(`${API}/book/${id}`,{method:'DELETE'}); loadGrid(); } }
+    async function submitBooking() {
+        const u=val('userName'); const i=val('userInfo');
+        if(!u||!i) { alert("اطلاعات ناقص است"); return; }
+        const body = { user_name:u, info_id:i, resource_name:val('resSelect'), day_name:val('daySelect'), hour:parseInt(val('hourSelect')), booking_type:CURRENT_VIEW_MODE };
+        const r = await post('book', body);
+        if(r.ok) { alert('ثبت شد'); loadGrid(); } else alert((await r.json()).detail);
+    }
+    async function post(e,d) { return fetch(`${API}/${e}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}); }
+    function val(id,v) { const e=document.getElementById(id); if(v===undefined)return e.value; else e.value=v; }
+    function downloadExcel() { window.location.href = `${API}/export-excel?type_filter=${CURRENT_VIEW_MODE}`; }
+</script>
+</body>
+</html>
