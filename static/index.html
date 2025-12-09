@@ -120,7 +120,7 @@
 </div>
 
 <script>
-    const API = "http://127.0.0.1:8000/api";
+    const API = "/api";
     let IS_ADMIN = false;
     let CURRENT_VIEW_MODE = 'student';
 
@@ -264,4 +264,5 @@
     function downloadExcel() { window.location.href = `${API}/export-excel?type_filter=${CURRENT_VIEW_MODE}`; }
 </script>
 </body>
+
 </html>
